@@ -30,11 +30,22 @@ class MinHeap<T> {
         return true
     }
 
+    /**
+     * @return the minimum value in the heap (or null if heap is empty)
+     */
     fun peek():T? {
         if (vertices.isEmpty()) {
             return null
         }
         return vertices.first().first
+    }
+
+
+    /**
+     * @return the number of elements in the heap
+     */
+    fun size():Int {
+        return vertices.size
     }
 
     /**

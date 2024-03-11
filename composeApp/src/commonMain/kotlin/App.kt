@@ -1,5 +1,4 @@
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,94 +15,110 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import composedemo.composeapp.generated.resources.Res
-import composedemo.composeapp.generated.resources.compose_multiplatform
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.random.Random
 
-@OptIn(ExperimentalResourceApi::class)
 @Composable
 @Preview
 fun App() {
     MaterialTheme {
-        var heap by remember { mutableStateOf(MinHeap<Double>()) }
+        val heap by remember { mutableStateOf(MinHeap<Double>()) }
         val showDialog = remember { mutableStateOf(false) }
-        var minString by remember { mutableStateOf("") }
-        var newestValue by remember { mutableStateOf("") }
-
+        val dialogText = remember { mutableStateOf("") }
+        var newestValue by remember { mutableStateOf(0.0) }
+        val textStyle = TextStyle(
+            fontSize = 18.sp,
+            color = Color.Black
+        )
         if (showDialog.value) {
-            Alert("Heap is Empty", showDialog.value, onDismiss = {showDialog.value = false})
+            Alert(dialogText.value, showDialog.value, onDismiss = {showDialog.value = false})
         }
 
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Button(onClick = {
-                val r = Random.nextDouble()
-                heap.insert(r, r)
-                minString = heap.peek()?.toString() ?: ""
-                newestValue = r.toString()
+                if (heap.size() >= 31) {
+                    dialogText.value = "Heap is full"
+                    showDialog.value = true
+                } else {
+                    val r = Random.nextDouble()
+                    heap.insert(r, r)
+                    newestValue = r
+                }
             }) {
                 Text("Insert Random Value!")
             }
             Button(onClick = {
                 if (heap.isEmpty()) {
+                    dialogText.value = "Heap is empty"
                     showDialog.value = true
                 } else {
                     heap.getMin()
-                    minString = heap.peek()?.toString() ?: ""
                 }
             }) {
                 Text("Remove min")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Most recently inserted value", modifier=Modifier.padding(12.dp))
-                Text(newestValue)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Minimum value in the heap", modifier=Modifier.padding(12.dp))
-                Text(minString)
+                val roundedValue = round(newestValue*100)/100
+                Text("Most recently inserted value",
+                    style=textStyle,
+                    modifier=Modifier.padding(12.dp))
+                Text(roundedValue.toString(), style=textStyle)
             }
             val textMeasure = rememberTextMeasurer()
 
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val rowSpacing = 20F
-                val rectSize = size / 20F
                 val vertices = heap.getVertices()
-                val style = TextStyle(
-                    fontSize = 14.sp,
-                    color = Color.Black,
-                    background = Color.Red.copy(alpha = 0.5f)
-                )
+
                 vertices.forEachIndexed { index, vert ->
                     // TODO: can't get string formatting to work properly, so defaulting to this
                     // less than optimal approach
                     val roundedValue = round(vert.first*100)/100
-                    val textLayoutResult = textMeasure.measure(
+                    val textLayout = textMeasure.measure(
                         AnnotatedString(roundedValue.toString()),
-                        style = style
+                        style = textStyle
                     )
-                    val level = log2(index.toDouble()+1).toInt()
-                    val position = (index - 2.0.pow(level) + 1.0).toInt()
-                    val offset = Offset(position*(rectSize.width + rowSpacing), (rowSpacing+rectSize.height)*level)
-                    drawText(textLayoutResult, topLeft = offset)
+                    val center = centerCanvasCoordinates(size, index)
+                    val offset = Offset(center.x - textLayout.size.width/2,
+                                        center.y - textLayout.size.height/2)
+                    if (index != 0) { // the root has no parent
+                        // standard math to get parent index
+                        val parentIndex = (index - 1) / 2
+                        val parentCenter = centerCanvasCoordinates(size, parentIndex)
+                        drawLine(
+                            color = Color.Black,
+                            start = center - Offset(0f, textLayout.size.height.toFloat() / 2),
+                            end = parentCenter + Offset(
+                                0f,
+                                textLayout.size.height.toFloat() / 2
+                            )
+                        )
+                    }
+                    drawText(textLayout, topLeft = offset)
                 }
             }
         }
     }
+}
+
+fun centerCanvasCoordinates(canvasSize: Size, index: Int): Offset {
+    val vertSpacing = canvasSize.height/5
+    val level = log2(index.toDouble()+1).toInt()
+    val leadSpacing = canvasSize.width.toFloat() / 2.0.pow(level+1)
+    val gap = canvasSize.width.toFloat() / 2.0.pow(level)
+    val position = (index - 2.0.pow(level) + 1.0).toInt()
+    return Offset((leadSpacing + position*gap).toFloat(), vertSpacing*level+vertSpacing/3)
 }
 
 @Composable
