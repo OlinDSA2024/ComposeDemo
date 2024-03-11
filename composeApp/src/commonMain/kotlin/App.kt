@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
+import kotlin.math.floor
 import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
@@ -37,7 +38,7 @@ fun App() {
         val heap by remember { mutableStateOf(MinHeap<Double>()) }
         val showDialog = remember { mutableStateOf(false) }
         val dialogText = remember { mutableStateOf("") }
-        var newestValue by remember { mutableStateOf(0.0) }
+        var newestValue by remember { mutableStateOf(0) }
         val textStyle = TextStyle(
             fontSize = 18.sp,
             color = Color.Black
@@ -53,8 +54,9 @@ fun App() {
                     showDialog.value = true
                 } else {
                     val r = Random.nextDouble()
-                    heap.insert(r, r)
-                    newestValue = r
+                    val p = floor(Random.nextDouble()*100)
+                    heap.insert(r, p)
+                    newestValue = p.toInt()
                 }
             }) {
                 Text("Insert Random Value!")
@@ -70,11 +72,10 @@ fun App() {
                 Text("Remove min")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val roundedValue = round(newestValue*100)/100
                 Text("Most recently inserted value",
                     style=textStyle,
                     modifier=Modifier.padding(12.dp))
-                Text(roundedValue.toString(), style=textStyle)
+                Text(newestValue.toString(), style=textStyle)
             }
             val textMeasure = rememberTextMeasurer()
 
@@ -82,11 +83,8 @@ fun App() {
                 val vertices = heap.getVertices()
 
                 vertices.forEachIndexed { index, vert ->
-                    // TODO: can't get string formatting to work properly, so defaulting to this
-                    // less than optimal approach
-                    val roundedValue = round(vert.first*100)/100
                     val textLayout = textMeasure.measure(
-                        AnnotatedString(roundedValue.toString()),
+                        AnnotatedString(vert.second.toInt().toString()),
                         style = textStyle
                     )
                     val center = centerCanvasCoordinates(size, index)
